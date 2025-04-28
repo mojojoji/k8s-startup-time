@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -54,9 +53,9 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 					},
 				},
 				Spec: corev1.PodSpec{
-					HostNetwork: true,
-					HostPID:     true,
-					HostIPC:     true,
+					NodeSelector: map[string]string{
+						"kubernetes.io/hostname": "3a30207f-cpu11.cloud.together.ai",
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "health-server",
@@ -65,12 +64,6 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 8080,
-								},
-							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("50m"),
-									corev1.ResourceMemory: resource.MustParse("32Mi"),
 								},
 							},
 						},
