@@ -21,13 +21,13 @@ spec:
       serviceAccountName: k8s-startup-time
       containers:
       - name: k8s-startup-time
-        image: ghcr.io/mojojoji/k8s-startup-time-startup-time:f5f540a4b579c92fa7092889f3d169fa40afb380
+        image: ghcr.io/mojojoji/k8s-startup-time-startup-time:5d30e18c1c3720fa0ff65e9d652279b9b9c75749
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
         - name: HEALTH_SERVER_IMAGE
-          value: "ghcr.io/mojojoji/k8s-startup-time-health-server:latest"
+          value: "ghcr.io/mojojoji/k8s-startup-time-health-server:5d30e18c1c3720fa0ff65e9d652279b9b9c75749"
         resources:
           requests:
             cpu: "50m"    # Minimum CPU needed to start

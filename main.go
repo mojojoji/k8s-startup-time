@@ -55,6 +55,8 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 				},
 				Spec: corev1.PodSpec{
 					HostNetwork: true,
+					HostPID:     true,
+					HostIPC:     true,
 					Containers: []corev1.Container{
 						{
 							Name:            "health-server",
