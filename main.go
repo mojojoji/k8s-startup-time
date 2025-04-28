@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,9 +23,16 @@ type Response struct {
 }
 
 const (
-	namespace         = "k8s-test"
-	healthServerImage = "ghcr.io/mojojoji/k8s-startup-time-health-server:latest"
+	namespace                = "k8s-test"
+	defaultHealthServerImage = "ghcr.io/mojojoji/k8s-startup-time-health-server:latest"
 )
+
+func getHealthServerImage() string {
+	if image := os.Getenv("HEALTH_SERVER_IMAGE"); image != "" {
+		return image
+	}
+	return defaultHealthServerImage
+}
 
 func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) {
 	// Create deployment
@@ -46,10 +54,11 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 					},
 				},
 				Spec: corev1.PodSpec{
+					HostNetwork: true,
 					Containers: []corev1.Container{
 						{
 							Name:            "health-server",
-							Image:           healthServerImage,
+							Image:           getHealthServerImage(),
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Ports: []corev1.ContainerPort{
 								{
