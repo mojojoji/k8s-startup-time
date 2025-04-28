@@ -36,7 +36,9 @@ jobs:
         with:
           context: ./health-server
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-health-server:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-health-server:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-health-server:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
@@ -49,7 +51,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-startup-time:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-startup-time:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-startup-time:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
