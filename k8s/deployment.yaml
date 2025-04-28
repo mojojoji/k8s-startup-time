@@ -22,9 +22,13 @@ spec:
       containers:
       - name: k8s-startup-time
         image: ghcr.io/mojojoji/k8s-startup-time-startup-time:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
+        resources:
+          requests:
+            cpu: "50m"    # Minimum CPU needed to start
+            memory: "32Mi" # Minimum memory needed to start
 ---
 apiVersion: v1
 kind: Service
