@@ -56,6 +56,14 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 					NodeSelector: map[string]string{
 						"kubernetes.io/hostname": "3a30207f-cpu11.cloud.together.ai",
 					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:      "worker",
+							Operator: corev1.TolerationOpEqual,
+							Value:    "true",
+							Effect:   corev1.TaintEffectNoSchedule,
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "health-server",
