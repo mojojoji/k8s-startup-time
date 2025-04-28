@@ -22,7 +22,7 @@ spec:
       containers:
       - name: k8s-startup-time
         image: ghcr.io/mojojoji/k8s-startup-time-startup-time:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         resources:
