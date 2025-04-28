@@ -80,22 +80,24 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 
 	// Wait for pod to be ready and check health endpoint
 	var podIP string
-	for {
-		pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
-			LabelSelector: "app=startup-test",
-		})
-		if err != nil {
-			log.Printf("Error listing pods: %v", err)
-			time.Sleep(20 * time.Millisecond)
+	watcher, err := clientset.CoreV1().Pods(namespace).Watch(context.TODO(), metav1.ListOptions{
+		LabelSelector: "app=startup-test",
+	})
+	if err != nil {
+		return 0, fmt.Errorf("error creating pod watcher: %v", err)
+	}
+	defer watcher.Stop()
+
+	for event := range watcher.ResultChan() {
+		pod, ok := event.Object.(*corev1.Pod)
+		if !ok {
 			continue
 		}
-
-		if len(pods.Items) > 0 && pods.Items[0].Status.PodIP != "" {
-			podIP = pods.Items[0].Status.PodIP
+		if pod.Status.PodIP != "" {
+			podIP = pod.Status.PodIP
 			log.Printf("Got IP %s : %s", podIP, time.Since(startTime))
 			break
 		}
-		time.Sleep(20 * time.Millisecond)
 	}
 
 	// Check health endpoint
