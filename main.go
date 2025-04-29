@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	ciliumv2 "github.com/cilium/cilium/pkg/k8s/apis/cilium.io/v2"
+	ciliumclientset "github.com/cilium/cilium/pkg/k8s/client/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,6 +36,16 @@ func getHealthServerImage() string {
 }
 
 func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) {
+	// Create cilium clientset
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return 0, fmt.Errorf("error getting in-cluster config: %v", err)
+	}
+	ciliumClient, err := ciliumclientset.NewForConfig(config)
+	if err != nil {
+		return 0, fmt.Errorf("error creating cilium clientset: %v", err)
+	}
+
 	// Create deployment
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -75,34 +87,41 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 	log.Printf("[%s] Starting deployment creation", time.Now().Format(time.RFC3339))
 
 	// Create deployment
-	_, err := clientset.AppsV1().Deployments(namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
+	_, err = clientset.AppsV1().Deployments(namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 	if err != nil {
 		return 0, fmt.Errorf("error creating deployment: %v", err)
 	}
 	log.Printf("[%s] Deployment created successfully", time.Now().Format(time.RFC3339))
 
-	// Wait for pod to be ready and check health endpoint
+	// Wait for pod IP using CiliumEndpoint
 	var podIP string
-	watcher, err := clientset.CoreV1().Pods(namespace).Watch(context.TODO(), metav1.ListOptions{
+	watcher, err := ciliumClient.CiliumV2().CiliumEndpoints(namespace).Watch(context.TODO(), metav1.ListOptions{
 		LabelSelector: "app=startup-test",
 	})
 	if err != nil {
-		return 0, fmt.Errorf("error creating pod watcher: %v", err)
+		return 0, fmt.Errorf("error creating CiliumEndpoint watcher: %v", err)
 	}
 	defer watcher.Stop()
 
-	log.Printf("[%s] Watching for pod events", time.Now().Format(time.RFC3339))
+	log.Printf("[%s] Watching for CiliumEndpoint events", time.Now().Format(time.RFC3339))
 	for event := range watcher.ResultChan() {
-		pod, ok := event.Object.(*corev1.Pod)
+		endpoint, ok := event.Object.(*ciliumv2.CiliumEndpoint)
 		if !ok {
 			continue
 		}
-		log.Printf("[%s] Pod event: %s - Phase: %s (IP: %s, %v)", time.Now().Format(time.RFC3339), event.Type, pod.Status.Phase, pod.Status.PodIP, pod.Status.PodIPs)
+		log.Printf("[%s] CiliumEndpoint event: %s - Networking: %+v", time.Now().Format(time.RFC3339), event.Type, endpoint.Status.Networking)
 
-		if pod.Status.PodIP != "" {
-			podIP = pod.Status.PodIP
-			log.Printf("[%s] Pod IP assigned: %s (elapsed: %s)", time.Now().Format(time.RFC3339), podIP, time.Since(startTime))
-			break
+		if endpoint.Status.Networking.Addressing != nil {
+			for _, addr := range endpoint.Status.Networking.Addressing {
+				if addr.IPV4 != "" {
+					podIP = addr.IPV4
+					log.Printf("[%s] Pod IP assigned from CiliumEndpoint: %s (elapsed: %s)", time.Now().Format(time.RFC3339), podIP, time.Since(startTime))
+					break
+				}
+			}
+			if podIP != "" {
+				break
+			}
 		}
 	}
 
