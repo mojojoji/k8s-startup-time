@@ -72,12 +72,14 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 
 	// Start timing
 	startTime := time.Now()
+	log.Printf("[%s] Starting deployment creation", time.Now().Format(time.RFC3339))
 
 	// Create deployment
 	_, err := clientset.AppsV1().Deployments(namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 	if err != nil {
 		return 0, fmt.Errorf("error creating deployment: %v", err)
 	}
+	log.Printf("[%s] Deployment created successfully", time.Now().Format(time.RFC3339))
 
 	// Wait for pod to be ready and check health endpoint
 	var podIP string
@@ -89,30 +91,41 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 	}
 	defer watcher.Stop()
 
+	log.Printf("[%s] Watching for pod events", time.Now().Format(time.RFC3339))
 	for event := range watcher.ResultChan() {
 		pod, ok := event.Object.(*corev1.Pod)
 		if !ok {
 			continue
 		}
+		log.Printf("[%s] Pod event: %s - Phase: %s", time.Now().Format(time.RFC3339), event.Type, pod.Status.Phase)
+
 		if pod.Status.PodIP != "" {
 			podIP = pod.Status.PodIP
-			log.Printf("Got IP %s : %s", podIP, time.Since(startTime))
+			log.Printf("[%s] Pod IP assigned: %s (elapsed: %s)", time.Now().Format(time.RFC3339), podIP, time.Since(startTime))
 			break
 		}
 	}
 
 	// Check health endpoint
+	log.Printf("[%s] Starting health check attempts", time.Now().Format(time.RFC3339))
+	attempts := 0
 	for {
+		attempts++
 		resp, err := http.Get(fmt.Sprintf("http://%s:8080/health", podIP))
 		if err == nil && resp.StatusCode == http.StatusOK {
-			log.Printf("Got Healthy response %s : %s", podIP, time.Since(startTime))
+			log.Printf("[%s] Health check successful (attempt %d, elapsed: %s)", time.Now().Format(time.RFC3339), attempts, time.Since(startTime))
 			break
+		}
+		if attempts%10 == 0 {
+			log.Printf("[%s] Health check attempt %d failed: %v", time.Now().Format(time.RFC3339), attempts, err)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 
 	// Calculate total time
-	return time.Since(startTime), nil
+	totalTime := time.Since(startTime)
+	log.Printf("[%s] Total startup time: %s", time.Now().Format(time.RFC3339), totalTime)
+	return totalTime, nil
 }
 
 func main() {
