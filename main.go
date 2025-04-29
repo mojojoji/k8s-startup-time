@@ -97,7 +97,7 @@ func measureStartupTime(clientset *kubernetes.Clientset) (time.Duration, error) 
 		if !ok {
 			continue
 		}
-		log.Printf("[%s] Pod event: %s - Phase: %s", time.Now().Format(time.RFC3339), event.Type, pod.Status.Phase)
+		log.Printf("[%s] Pod event: %s - Phase: %s (IP: %s, %v)", time.Now().Format(time.RFC3339), event.Type, pod.Status.Phase, pod.Status.PodIP, pod.Status.PodIPs)
 
 		if pod.Status.PodIP != "" {
 			podIP = pod.Status.PodIP
